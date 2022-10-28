@@ -571,6 +571,7 @@ export const requestPurchase = (
           appAccountToken,
           quantity,
           withOffer,
+          requestJSONString,
         } = request;
 
         if (andDangerouslyFinishTransactionAutomaticallyIOS) {
@@ -591,6 +592,7 @@ export const requestPurchase = (
         } else {
           return RNIapIos.buyProduct(
             sku,
+            requestJSONString,
             andDangerouslyFinishTransactionAutomaticallyIOS,
             appAccountToken,
             quantity ?? -1,
@@ -724,6 +726,7 @@ export const requestSubscription = (
           appAccountToken,
           quantity,
           withOffer,
+          requestJSONString,
         } = request;
 
         if (andDangerouslyFinishTransactionAutomaticallyIOS) {
@@ -745,6 +748,7 @@ export const requestSubscription = (
         } else {
           return RNIapIos.buyProduct(
             sku,
+            requestJSONString,
             andDangerouslyFinishTransactionAutomaticallyIOS,
             appAccountToken,
             quantity ?? -1,
