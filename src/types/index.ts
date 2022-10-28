@@ -230,6 +230,7 @@ export interface RequestPurchaseAndroid extends RequestPurchaseBaseAndroid {
 export interface RequestPurchaseIOS {
   sku: Sku;
   andDangerouslyFinishTransactionAutomaticallyIOS?: boolean;
+  requestJSONString?: string;
   /**
    * UUID representing user account
    */
