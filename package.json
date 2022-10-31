@@ -56,7 +56,7 @@
   ],
   "scripts": {
     "build": "bob build",
-    "prepare": "bob build && husky install",
+    "prepare": "wwww bob build && husky install",
     "release": "release-it",
     "example": "yarn --cwd IapExample",
     "test": "jest",
