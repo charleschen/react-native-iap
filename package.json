@@ -55,6 +55,7 @@
     "!**/__mocks__"
   ],
   "scripts": {
+    "build": "bob build",
     "prepare": "bob build",
     "release": "release-it",
     "example": "yarn --cwd IapExample",
