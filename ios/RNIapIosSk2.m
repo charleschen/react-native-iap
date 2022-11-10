@@ -36,6 +36,7 @@ RCT_EXTERN_METHOD(getItems:
 
 RCT_EXTERN_METHOD(getAvailableItems:
                   (BOOL)alsoPublishToEventListener
+                  onlyIncludeActiveItems:(BOOL)onlyIncludeActiveItems
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 
@@ -73,7 +74,7 @@ RCT_EXTERN_METHOD(finishTransaction:
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 
-RCT_EXTERN_METHOD(pendingTransactions:
+RCT_EXTERN_METHOD(getPendingTransactions:
                   (RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 

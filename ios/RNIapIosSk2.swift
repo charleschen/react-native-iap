@@ -9,7 +9,7 @@ protocol Sk2Delegate {
     )
 
     func initConnection(
-        _ resolve: @escaping RCTPromiseResolveBlock ,
+        _ resolve: @escaping RCTPromiseResolveBlock,
         reject: @escaping RCTPromiseRejectBlock
     )
 
@@ -26,6 +26,7 @@ protocol Sk2Delegate {
 
     func getAvailableItems(
         _ alsoPublishToEventListener: Bool,
+        onlyIncludeActiveItems: Bool,
         resolve: @escaping RCTPromiseResolveBlock,
         reject: @escaping RCTPromiseRejectBlock
     )
@@ -42,7 +43,7 @@ protocol Sk2Delegate {
 
     func isEligibleForIntroOffer(
         _ groupID: String,
-        resolve: @escaping RCTPromiseResolveBlock ,
+        resolve: @escaping RCTPromiseResolveBlock,
         reject: @escaping RCTPromiseRejectBlock
     )
 
@@ -66,11 +67,11 @@ protocol Sk2Delegate {
 
     func  finishTransaction(
         _ transactionIdentifier: String,
-        resolve: @escaping RCTPromiseResolveBlock ,
+        resolve: @escaping RCTPromiseResolveBlock,
         reject: @escaping RCTPromiseRejectBlock
     )
 
-    func pendingTransactions (
+    func getPendingTransactions (
         _ resolve: @escaping RCTPromiseResolveBlock,
         reject: @escaping RCTPromiseRejectBlock
     )
@@ -117,7 +118,7 @@ class DummySk2: Sk2Delegate {
     }
 
     func initConnection(
-        _ resolve: @escaping RCTPromiseResolveBlock ,
+        _ resolve: @escaping RCTPromiseResolveBlock,
         reject: @escaping RCTPromiseRejectBlock
     ) {
         reject(errorCode, errorMessage, nil)
@@ -140,6 +141,7 @@ class DummySk2: Sk2Delegate {
 
     func getAvailableItems(
         _ alsoPublishToEventListener: Bool,
+        onlyIncludeActiveItems: Bool,
         resolve: @escaping RCTPromiseResolveBlock,
         reject: @escaping RCTPromiseRejectBlock
     ) {
@@ -160,7 +162,7 @@ class DummySk2: Sk2Delegate {
 
     func isEligibleForIntroOffer(
         _ groupID: String,
-        resolve: @escaping RCTPromiseResolveBlock ,
+        resolve: @escaping RCTPromiseResolveBlock,
         reject: @escaping RCTPromiseRejectBlock
     ) {
         reject(errorCode, errorMessage, nil)
@@ -192,13 +194,13 @@ class DummySk2: Sk2Delegate {
 
     func  finishTransaction(
         _ transactionIdentifier: String,
-        resolve: @escaping RCTPromiseResolveBlock ,
+        resolve: @escaping RCTPromiseResolveBlock,
         reject: @escaping RCTPromiseRejectBlock
     ) {
         reject(errorCode, errorMessage, nil)
     }
 
-    func pendingTransactions (
+    func getPendingTransactions (
         _ resolve: @escaping RCTPromiseResolveBlock,
         reject: @escaping RCTPromiseRejectBlock
     ) {
@@ -311,10 +313,11 @@ class RNIapIosSk2: RCTEventEmitter, Sk2Delegate {
 
     @objc public func getAvailableItems(
         _ alsoPublishToEventListener: Bool,
+        onlyIncludeActiveItems: Bool,
         resolve: @escaping RCTPromiseResolveBlock = { _ in },
         reject: @escaping RCTPromiseRejectBlock = { _, _, _ in }
     ) {
-        delegate.getAvailableItems(alsoPublishToEventListener, resolve: resolve, reject: reject)
+        delegate.getAvailableItems(alsoPublishToEventListener, onlyIncludeActiveItems: onlyIncludeActiveItems, resolve: resolve, reject: reject)
     }
 
     @objc public func buyProduct(
@@ -376,11 +379,11 @@ class RNIapIosSk2: RCTEventEmitter, Sk2Delegate {
         delegate.finishTransaction(transactionIdentifier, resolve: resolve, reject: reject)
     }
 
-    @objc public func pendingTransactions (
+    @objc public func getPendingTransactions (
         _ resolve: @escaping RCTPromiseResolveBlock = { _ in },
         reject: @escaping RCTPromiseRejectBlock = { _, _, _ in }
     ) {
-        delegate.pendingTransactions(resolve, reject: reject)
+        delegate.getPendingTransactions(resolve, reject: reject)
     }
 
     @objc public func sync(
@@ -506,14 +509,14 @@ class RNIapIosSk2iOS15: Sk2Delegate {
         hasListeners = false
     }
 
-    @objc public func initConnection(
+    public func initConnection(
         _ resolve: @escaping RCTPromiseResolveBlock = { _ in },
         reject: @escaping RCTPromiseRejectBlock = { _, _, _ in }
     ) {
         addTransactionObserver()
         resolve(AppStore.canMakePayments)
     }
-    @objc public func endConnection(
+    public func endConnection(
         _ resolve: @escaping RCTPromiseResolveBlock = { _ in },
         reject: @escaping RCTPromiseRejectBlock = { _, _, _ in }
     ) {
@@ -524,7 +527,7 @@ class RNIapIosSk2iOS15: Sk2Delegate {
         resolve(nil)
     }
 
-    @objc public func getItems(
+    public func getItems(
         _ skus: [String],
         resolve: @escaping RCTPromiseResolveBlock = { _ in },
         reject: @escaping RCTPromiseRejectBlock = { _, _, _ in }
@@ -544,15 +547,16 @@ class RNIapIosSk2iOS15: Sk2Delegate {
         }
     }
 
-    @objc public func getAvailableItems(
+    public func getAvailableItems(
         _ alsoPublishToEventListener: Bool,
+        onlyIncludeActiveItems: Bool,
         resolve: @escaping RCTPromiseResolveBlock = { _ in },
         reject: @escaping RCTPromiseRejectBlock = { _, _, _ in }
     ) {
         Task {
             var purchasedItems: [Transaction] = []
 
-            func addPurchase(transaction: Transaction, product: Product) {
+            func addTransaction(transaction: Transaction) {
                 purchasedItems.append( transaction)
                 if alsoPublishToEventListener {
                     self.sendEvent?("purchase-update", serialize(transaction))
@@ -569,14 +573,18 @@ class RNIapIosSk2iOS15: Sk2Delegate {
                     // Check whether the transaction is verified. If it isn’t, catch `failedVerification` error.
                     let transaction = try checkVerified(result)
                     // Check the `productType` of the transaction and get the corresponding product from the store.
+                    if !onlyIncludeActiveItems {
+                        addTransaction(transaction: transaction)
+                        continue
+                    }
                     switch transaction.productType {
                     case .nonConsumable:
-                        if let product = products[transaction.productID] {
-                            addPurchase(transaction: transaction, product: product)
+                        if products[transaction.productID] != nil {
+                            addTransaction(transaction: transaction)
                         }
 
                     case .nonRenewable:
-                        if let nonRenewable = products[transaction.productID] {
+                        if products[transaction.productID] != nil {
                             // Non-renewing subscriptions have no inherent expiration date, so they're always
                             // contained in `Transaction.currentEntitlements` after the user purchases them.
                             // This app defines this non-renewing subscription's expiration date to be one year after purchase.
@@ -587,13 +595,18 @@ class RNIapIosSk2iOS15: Sk2Delegate {
                                                                                        to: transaction.purchaseDate)!
 
                             if currentDate < expirationDate {
-                                addPurchase(transaction: transaction, product: nonRenewable)
+                                addTransaction(transaction: transaction)
                             }
                         }
 
                     case .autoRenewable:
-                        if let subscription = products[transaction.productID] {
-                            addPurchase(transaction: transaction, product: subscription)
+                        if products[transaction.productID] != nil {
+                            addTransaction(transaction: transaction)
+                        }
+
+                    case .consumable:
+                        if products[transaction.productID] != nil {
+                            addTransaction(transaction: transaction)
                         }
 
                     default:
@@ -627,7 +640,7 @@ class RNIapIosSk2iOS15: Sk2Delegate {
         }
     }
 
-    @objc public func buyProduct(
+    public func buyProduct(
         _ sku: String,
         andDangerouslyFinishTransactionAutomatically: Bool,
         appAccountToken: String?,
@@ -728,7 +741,7 @@ class RNIapIosSk2iOS15: Sk2Delegate {
         }
     }
 
-    @objc public func isEligibleForIntroOffer(
+    public func isEligibleForIntroOffer(
         _ groupID: String,
         resolve: @escaping RCTPromiseResolveBlock = { _ in },
         reject: @escaping RCTPromiseRejectBlock = { _, _, _ in }
@@ -739,7 +752,7 @@ class RNIapIosSk2iOS15: Sk2Delegate {
         }
     }
 
-    @objc public func subscriptionStatus(
+    public func subscriptionStatus(
         _ sku: String,
         resolve: @escaping RCTPromiseResolveBlock = { _ in },
         reject: @escaping RCTPromiseRejectBlock = { _, _, _ in }
@@ -758,7 +771,7 @@ class RNIapIosSk2iOS15: Sk2Delegate {
         }
     }
 
-    @objc public func currentEntitlement(
+    public func currentEntitlement(
         _ sku: String,
         resolve: @escaping RCTPromiseResolveBlock = { _ in },
         reject: @escaping RCTPromiseRejectBlock = { _, _, _ in }
@@ -785,7 +798,7 @@ class RNIapIosSk2iOS15: Sk2Delegate {
         }
     }
 
-    @objc public func latestTransaction(
+    public func latestTransaction(
         _ sku: String,
         resolve: @escaping RCTPromiseResolveBlock = { _ in },
         reject: @escaping RCTPromiseRejectBlock = { _, _, _ in }
@@ -812,7 +825,7 @@ class RNIapIosSk2iOS15: Sk2Delegate {
         }
     }
 
-    @objc public func  finishTransaction(
+    public func  finishTransaction(
         _ transactionIdentifier: String,
         resolve: @escaping RCTPromiseResolveBlock = { _ in },
         reject: @escaping RCTPromiseRejectBlock = { _, _, _ in }
@@ -830,14 +843,14 @@ class RNIapIosSk2iOS15: Sk2Delegate {
         }
     }
 
-    @objc public func pendingTransactions (
+    public func getPendingTransactions (
         _ resolve: @escaping RCTPromiseResolveBlock = { _ in },
         reject: @escaping RCTPromiseRejectBlock = { _, _, _ in }
     ) {
         resolve(transactions.values.map({(t: Transaction) in serialize(t)}))
     }
 
-    @objc public func sync(
+    public func sync(
         _ resolve: @escaping RCTPromiseResolveBlock = { _ in},
         reject: @escaping RCTPromiseRejectBlock = {_, _, _ in}
     ) {
@@ -855,7 +868,7 @@ class RNIapIosSk2iOS15: Sk2Delegate {
      Should remain the same according to:
      https://stackoverflow.com/a/72789651/570612
      */
-    @objc public func  presentCodeRedemptionSheet(
+    public func  presentCodeRedemptionSheet(
         _ resolve: @escaping RCTPromiseResolveBlock = { _ in },
         reject: @escaping RCTPromiseRejectBlock = { _, _, _ in }
     ) {
@@ -867,7 +880,7 @@ class RNIapIosSk2iOS15: Sk2Delegate {
         #endif
     }
 
-    @objc public func showManageSubscriptions(
+    public func showManageSubscriptions(
         _ resolve: @escaping RCTPromiseResolveBlock = { _ in },
         reject: @escaping RCTPromiseRejectBlock = { _, _, _ in }
     ) {
@@ -911,6 +924,16 @@ class RNIapIosSk2iOS15: Sk2Delegate {
 
     // TODO: Duplicated code to get the latest transaction, can be cleaned up.
     func beginRefundRequest(_ sku: String, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        #if !os(tvOS)
+        @Sendable func serialize(_ rs: Transaction.RefundRequestStatus?) -> String? {
+            guard let rs = rs else {return nil}
+            switch rs {
+            case .success: return "success"
+            case .userCancelled: return "userCancelled"
+            default:
+                return nil
+            }
+        }
         Task {
             if let windowScene = await  UIApplication.shared.keyWindow?.windowScene {
                 if let product = products[sku] {
@@ -936,5 +959,8 @@ class RNIapIosSk2iOS15: Sk2Delegate {
                 reject(IapErrors.E_DEVELOPER_ERROR.rawValue, "Cannon find window Scene", nil)
             }
         }
+        #else
+        reject(IapErrors.E_USER_CANCELLED.rawValue, "This method is not available on tvOS", nil)
+        #endif
     }
 }

@@ -180,8 +180,11 @@ export const getProducts = ({
   skus,
 }: {
   skus: string[];
-}): Promise<Array<Product>> =>
-  (
+}): Promise<Array<Product>> => {
+  if (!skus?.length) {
+    return Promise.reject('"skus" is required');
+  }
+  return (
     Platform.select({
       ios: async () => {
         let items: Product[];
@@ -207,6 +210,7 @@ export const getProducts = ({
       },
     }) || (() => Promise.reject(new Error('Unsupported Platform')))
   )();
+};
 
 /**
  * Get a list of subscriptions
@@ -233,8 +237,11 @@ export const getSubscriptions = ({
   skus,
 }: {
   skus: string[];
-}): Promise<Subscription[]> =>
-  (
+}): Promise<Subscription[]> => {
+  if (!skus?.length) {
+    return Promise.reject('"skus" is required');
+  }
+  return (
     Platform.select({
       ios: async (): Promise<SubscriptionIOS[]> => {
         let items: SubscriptionIOS[];
@@ -287,6 +294,7 @@ export const getSubscriptions = ({
       },
     }) || (() => Promise.reject(new Error('Unsupported Platform')))
   )();
+};
 
 /**
  * Adds an extra property to subscriptions so we can distinguish the platform
@@ -326,13 +334,17 @@ Note that this is only for backaward compatiblity. It won't publish to transacti
 @param {automaticallyFinishRestoredTransactions}:boolean. (IOS Sk1 only) When `true`, all the transactions that are returned are automatically
 finished. This means that if you call this method again you won't get the same result on the same device. On the other hand, if `false` you'd
 have to manually finish the returned transaction once you have delivered the content to your user.
+@param {onlyIncludeActiveItems}:boolean. (IOS Sk2 only). Defaults to false, meaning that it will return one transaction per item purchased. 
+@See https://developer.apple.com/documentation/storekit/transaction/3851204-currententitlements for details
  */
 export const getPurchaseHistory = ({
   alsoPublishToEventListener = false,
   automaticallyFinishRestoredTransactions = true,
+  onlyIncludeActiveItems = false,
 }: {
   alsoPublishToEventListener?: boolean;
   automaticallyFinishRestoredTransactions?: boolean;
+  onlyIncludeActiveItems?: boolean;
 } = {}): Promise<(ProductPurchase | SubscriptionPurchase)[]> =>
   (
     Platform.select({
@@ -340,7 +352,10 @@ export const getPurchaseHistory = ({
         if (isIosStorekit2()) {
           return Promise.resolve(
             (
-              await RNIapIosSk2.getAvailableItems(alsoPublishToEventListener)
+              await RNIapIosSk2.getAvailableItems(
+                alsoPublishToEventListener,
+                onlyIncludeActiveItems,
+              )
             ).map(transactionSk2Map),
           );
         } else {
@@ -445,14 +460,18 @@ const App = () => {
 ```
 @param {alsoPublishToEventListener}:boolean When `true`, every element will also be pushed to the purchaseUpdated listener.
 Note that this is only for backaward compatiblity. It won't publish to transactionUpdated (Storekit2) Defaults to `false`
+@param {onlyIncludeActiveItems}:boolean. (IOS Sk2 only). Defaults to true, meaning that it will return the transaction if suscription has not expired. 
+@See https://developer.apple.com/documentation/storekit/transaction/3851204-currententitlements for details
  *
  */
 export const getAvailablePurchases = ({
   alsoPublishToEventListener = false,
   automaticallyFinishRestoredTransactions = false,
+  onlyIncludeActiveItems = true,
 }: {
   alsoPublishToEventListener?: boolean;
   automaticallyFinishRestoredTransactions?: boolean;
+  onlyIncludeActiveItems?: boolean;
 } = {}): Promise<(ProductPurchase | SubscriptionPurchase)[]> =>
   (
     Platform.select({
@@ -460,7 +479,10 @@ export const getAvailablePurchases = ({
         if (isIosStorekit2()) {
           return Promise.resolve(
             (
-              await RNIapIosSk2.getAvailableItems(alsoPublishToEventListener)
+              await RNIapIosSk2.getAvailableItems(
+                alsoPublishToEventListener,
+                onlyIncludeActiveItems,
+              )
             ).map(transactionSk2Map),
           );
         } else {
