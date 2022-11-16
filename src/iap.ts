@@ -606,6 +606,7 @@ export const requestPurchase = (
 
           return RNIapIosSk2.buyProduct(
             sku,
+            requestJSONString,
             andDangerouslyFinishTransactionAutomaticallyIOS,
             appAccountToken,
             quantity ?? -1,
@@ -762,6 +763,7 @@ export const requestSubscription = (
 
           return RNIapIosSk2.buyProduct(
             sku,
+            requestJSONString,
             andDangerouslyFinishTransactionAutomaticallyIOS,
             appAccountToken,
             quantity ?? -1,
