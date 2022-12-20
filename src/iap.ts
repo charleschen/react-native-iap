@@ -10,7 +10,7 @@ import {
   ProductSk2,
   productSk2Map,
   subscriptionSk2Map,
-  transactionSk2Map,
+  transactionSk2ToPurchaseMap,
 } from './types/appleSk2';
 import {
   fillProductsWithAdditionalData,
@@ -28,6 +28,7 @@ import {
   Product,
   ProductPurchase,
   ProductType,
+  Purchase,
   PurchaseResult,
   PurchaseStateAndroid,
   RequestPurchase,
@@ -224,7 +225,7 @@ import {getSubscriptions} from 'react-native-iap';
 const App = () => {
   const subscriptions = useCallback(
     async () =>
-      await getSubscriptions(['com.example.product1', 'com.example.product2']),
+      await getSubscriptions({skus:['com.example.product1', 'com.example.product2']}),
     [],
   );
 
@@ -334,7 +335,7 @@ Note that this is only for backaward compatiblity. It won't publish to transacti
 @param {automaticallyFinishRestoredTransactions}:boolean. (IOS Sk1 only) When `true`, all the transactions that are returned are automatically
 finished. This means that if you call this method again you won't get the same result on the same device. On the other hand, if `false` you'd
 have to manually finish the returned transaction once you have delivered the content to your user.
-@param {onlyIncludeActiveItems}:boolean. (IOS Sk2 only). Defaults to false, meaning that it will return one transaction per item purchased. 
+@param {onlyIncludeActiveItems}:boolean. (IOS Sk2 only). Defaults to false, meaning that it will return one transaction per item purchased.
 @See https://developer.apple.com/documentation/storekit/transaction/3851204-currententitlements for details
  */
 export const getPurchaseHistory = ({
@@ -345,7 +346,7 @@ export const getPurchaseHistory = ({
   alsoPublishToEventListener?: boolean;
   automaticallyFinishRestoredTransactions?: boolean;
   onlyIncludeActiveItems?: boolean;
-} = {}): Promise<(ProductPurchase | SubscriptionPurchase)[]> =>
+} = {}): Promise<Purchase[]> =>
   (
     Platform.select({
       ios: async () => {
@@ -356,7 +357,7 @@ export const getPurchaseHistory = ({
                 alsoPublishToEventListener,
                 onlyIncludeActiveItems,
               )
-            ).map(transactionSk2Map),
+            ).map(transactionSk2ToPurchaseMap),
           );
         } else {
           return RNIapIos.getAvailableItems(
@@ -460,7 +461,7 @@ const App = () => {
 ```
 @param {alsoPublishToEventListener}:boolean When `true`, every element will also be pushed to the purchaseUpdated listener.
 Note that this is only for backaward compatiblity. It won't publish to transactionUpdated (Storekit2) Defaults to `false`
-@param {onlyIncludeActiveItems}:boolean. (IOS Sk2 only). Defaults to true, meaning that it will return the transaction if suscription has not expired. 
+@param {onlyIncludeActiveItems}:boolean. (IOS Sk2 only). Defaults to true, meaning that it will return the transaction if suscription has not expired.
 @See https://developer.apple.com/documentation/storekit/transaction/3851204-currententitlements for details
  *
  */
@@ -472,7 +473,7 @@ export const getAvailablePurchases = ({
   alsoPublishToEventListener?: boolean;
   automaticallyFinishRestoredTransactions?: boolean;
   onlyIncludeActiveItems?: boolean;
-} = {}): Promise<(ProductPurchase | SubscriptionPurchase)[]> =>
+} = {}): Promise<Purchase[]> =>
   (
     Platform.select({
       ios: async () => {
@@ -483,7 +484,7 @@ export const getAvailablePurchases = ({
                 alsoPublishToEventListener,
                 onlyIncludeActiveItems,
               )
-            ).map(transactionSk2Map),
+            ).map(transactionSk2ToPurchaseMap),
           );
         } else {
           return RNIapIos.getAvailableItems(
@@ -553,7 +554,7 @@ import {requestPurchase, Product, Sku, getProducts} from 'react-native-iap';
 
 const App = () => {
   const products = useCallback(
-    async () => getProducts(['com.example.product']),
+    async () => getProducts({skus:['com.example.product']}),
     [],
   );
 
@@ -604,14 +605,17 @@ export const requestPurchase = (
         if (isIosStorekit2()) {
           const offer = offerSk2Map(withOffer);
 
-          return RNIapIosSk2.buyProduct(
-            sku,
-            requestJSONString,
-            andDangerouslyFinishTransactionAutomaticallyIOS,
-            appAccountToken,
-            quantity ?? -1,
-            offer,
+          const purchase = transactionSk2ToPurchaseMap(
+            await RNIapIosSk2.buyProduct(
+              sku,
+              requestJSONString,
+              andDangerouslyFinishTransactionAutomaticallyIOS,
+              appAccountToken,
+              quantity ?? -1,
+              offer,
+            ),
           );
+          return Promise.resolve(purchase);
         } else {
           return RNIapIos.buyProduct(
             sku,
@@ -761,14 +765,17 @@ export const requestSubscription = (
         if (isIosStorekit2()) {
           const offer = offerSk2Map(withOffer);
 
-          return RNIapIosSk2.buyProduct(
-            sku,
-            requestJSONString,
-            andDangerouslyFinishTransactionAutomaticallyIOS,
-            appAccountToken,
-            quantity ?? -1,
-            offer,
+          const purchase = transactionSk2ToPurchaseMap(
+            await RNIapIosSk2.buyProduct(
+              sku,
+              requestJSONString,
+              andDangerouslyFinishTransactionAutomaticallyIOS,
+              appAccountToken,
+              quantity ?? -1,
+              offer,
+            ),
           );
+          return Promise.resolve(purchase);
         } else {
           return RNIapIos.buyProduct(
             sku,
@@ -844,13 +851,14 @@ const App = () => {
   return <Button title="Buy product" onPress={handlePurchase} />;
 };
 ```
+ @returns {Promise<PurchaseResult | boolean>} Android: PurchaseResult, iOS: true
  */
 export const finishTransaction = ({
   purchase,
   isConsumable,
   developerPayloadAndroid,
 }: {
-  purchase: ProductPurchase | SubscriptionPurchase;
+  purchase: Purchase;
   isConsumable?: boolean;
   developerPayloadAndroid?: string;
 }): Promise<PurchaseResult | boolean> => {
@@ -864,7 +872,8 @@ export const finishTransaction = ({
             new Error('transactionId required to finish iOS transaction'),
           );
         }
-        return getIosModule().finishTransaction(transactionId);
+        await getIosModule().finishTransaction(transactionId);
+        return Promise.resolve(true);
       },
       android: async () => {
         if (purchase?.purchaseToken) {
