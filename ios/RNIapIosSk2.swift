@@ -572,7 +572,7 @@ class RNIapIosSk2iOS15: Sk2Delegate {
                 }
             }
             // Iterate through all of the user's purchased products.
-            for await result in Transaction.currentEntitlements {
+            for await result in onlyIncludeActiveItems ? Transaction.currentEntitlements : Transaction.all {
                 do {
                     // Check whether the transaction is verified. If it isn’t, catch `failedVerification` error.
                     let transaction = try checkVerified(result)
