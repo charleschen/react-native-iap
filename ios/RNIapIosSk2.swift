@@ -437,7 +437,6 @@ class RNIapIosSk2iOS15: Sk2Delegate {
         self.sendEvent = sendEvent
         products = [String: Product]()
         transactions = [String: Transaction]()
-        addTransactionObserver()
     }
 
     deinit {
@@ -479,8 +478,8 @@ class RNIapIosSk2iOS15: Sk2Delegate {
                     // await self.updateCustomerProductStatus()
 
                     if self.hasListeners {
-                        self.sendEvent?("purchase-updated", serialize(transaction))
-                        self.sendEvent?("iap-transaction-updated", ["transaction": serialize(transaction)])
+                        self.sendEvent?("purchase-updated", serialize(transaction, result))
+                        self.sendEvent?("iap-transaction-updated", ["transaction": serialize(transaction, result)])
                     }
                     // Always finish a transaction.
                     // await transaction.finish()
@@ -507,17 +506,18 @@ class RNIapIosSk2iOS15: Sk2Delegate {
 
     func startObserving() {
         hasListeners = true
+        addTransactionObserver()
     }
 
     func stopObserving() {
         hasListeners = false
+        removeTransactionObserver()
     }
 
     public func initConnection(
         _ resolve: @escaping RCTPromiseResolveBlock = { _ in },
         reject: @escaping RCTPromiseRejectBlock = { _, _, _ in }
     ) {
-        addTransactionObserver()
         resolve(AppStore.canMakePayments)
     }
     public func endConnection(
@@ -526,8 +526,7 @@ class RNIapIosSk2iOS15: Sk2Delegate {
     ) {
         products.removeAll()
         transactions.removeAll()
-        updateListenerTask?.cancel()
-        updateListenerTask = nil
+        removeTransactionObserver()
         resolve(nil)
     }
 
@@ -702,12 +701,31 @@ class RNIapIosSk2iOS15: Sk2Delegate {
                             resolve(nil)
                         } else {
                             self.addTransaction(transaction)
-                            self.sendEvent?("purchase-updated", serialize(transaction))
-                            resolve(serialize(transaction))
+                            self.sendEvent?("purchase-updated", serialize(transaction, verification))
+                            resolve(serialize(transaction, verification))
                         }
                         return
 
-                    case .userCancelled, .pending:
+                    case .userCancelled:
+                        debugMessage("User cancelled the purchase")
+
+                        let err = [
+                            "debugMessage": "User cancelled the purchase",
+                            "code": IapErrors.E_USER_CANCELLED.rawValue,
+                            "message": "User cancelled the purchase",
+                            "productId": sku,
+                            "quantity": "\(quantity)"
+                        ]
+                        debugMessage(err)
+
+                        reject(
+                            IapErrors.E_USER_CANCELLED.rawValue,
+                            "User cancelled the purchase",
+                            nil)
+
+                        return
+
+                    case .pending:
                         debugMessage("Deferred (awaiting approval via parental controls, etc.)")
 
                         let err = [
@@ -793,7 +811,7 @@ class RNIapIosSk2iOS15: Sk2Delegate {
                     do {
                         // Check whether the transaction is verified. If it isn’t, catch `failedVerification` error.
                         let transaction = try checkVerified(result)
-                        resolve(serialize(transaction))
+                        resolve(serialize(transaction, result))
                     } catch StoreError.failedVerification {
                         reject(IapErrors.E_UNKNOWN.rawValue, "Failed to verify transaction for sku \(sku)", StoreError.failedVerification)
                     } catch {
@@ -820,7 +838,7 @@ class RNIapIosSk2iOS15: Sk2Delegate {
                     do {
                         // Check whether the transaction is verified. If it isn’t, catch `failedVerification` error.
                         let transaction = try checkVerified(result)
-                        resolve(serialize(transaction))
+                        resolve(serialize(transaction, result))
                     } catch StoreError.failedVerification {
                         reject(IapErrors.E_UNKNOWN.rawValue, "Failed to verify transaction for sku \(sku)", StoreError.failedVerification)
                     } catch {
@@ -896,20 +914,22 @@ class RNIapIosSk2iOS15: Sk2Delegate {
         reject: @escaping RCTPromiseRejectBlock = { _, _, _ in }
     ) {
         #if !os(tvOS)
-        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              !ProcessInfo.processInfo.isiOSAppOnMac else {
-            return
-        }
-
-        Task {
-            do {
-                try await AppStore.showManageSubscriptions(in: scene)
-            } catch {
-                print("Error:(error)")
+        DispatchQueue.main.async {
+            guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  !ProcessInfo.processInfo.isiOSAppOnMac else {
+                return
             }
-        }
 
-        resolve(nil)
+            Task {
+                do {
+                    try await AppStore.showManageSubscriptions(in: scene)
+                } catch {
+                    print("Error:(error)")
+                }
+            }
+
+            resolve(nil)
+        }
         #else
         reject(IapErrors.E_USER_CANCELLED.rawValue, "This method is not available on tvOS", nil)
         #endif

@@ -57,7 +57,7 @@ buildscript {
 +    androidXAnnotation = "1.1.0"
 +    androidXBrowser = "1.0.0"
 +    minSdkVersion = 24
-+    kotlinVersion = "1.5.0"
++    kotlinVersion = "1.8.0"
   }
 }
 
@@ -114,7 +114,7 @@ And your are now good to go!
 ### `Android`
 
 1. Open up `android/app/src/main/java/[...]/MainApplication.java`
-2. Add `import com.dooboolab.RNIap.IapPackage;` at the top of the file.
+2. Add `import com.dooboolab.rniap.RNIapPackage;` at the top of the file.
 3. Add `new RNIapPackage()` to the list returned by the `getPackages()` method
 
 4. Append the following lines to `android/settings.gradle`:

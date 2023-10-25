@@ -1,4 +1,4 @@
-package com.dooboolab.RNIap
+package com.dooboolab.rniap
 
 import android.util.Log
 import com.amazon.device.iap.PurchasingListener
@@ -10,19 +10,17 @@ import com.amazon.device.iap.model.Receipt
 import com.amazon.device.iap.model.UserData
 import com.amazon.device.iap.model.UserDataResponse
 import com.facebook.react.bridge.Arguments
-import com.facebook.react.bridge.ReactContext
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.bridge.WritableNativeArray
 import com.facebook.react.bridge.WritableNativeMap
-import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEmitter
 import java.lang.NumberFormatException
 
 val ProductType.typeString: String
     get() = if (this == ProductType.ENTITLED || this == ProductType.CONSUMABLE) "inapp" else "subs"
 
 class RNIapAmazonListener(
-    private val reactContext: ReactContext,
-    private val purchasingService: PurchasingServiceProxy
+    var eventSender: EventSender?,
+    var purchasingService: PurchasingServiceProxy?,
 ) : PurchasingListener {
 
     override fun onProductDataResponse(response: ProductDataResponse) {
@@ -40,7 +38,7 @@ class RNIapAmazonListener(
                     } catch (e: NumberFormatException) {
                         Log.w(
                             TAG,
-                            "onProductDataResponse: Failed to parse price for product: " + product.sku
+                            "onProductDataResponse: Failed to parse price for product: " + product.sku,
                         )
                     }
                     val item = Arguments.createMap()
@@ -63,7 +61,7 @@ class RNIapAmazonListener(
                 PromiseUtils
                     .resolvePromisesForKey(
                         RNIapAmazonModule.PROMISE_GET_PRODUCT_DATA,
-                        items
+                        items,
                     )
             }
             ProductDataResponse.RequestStatus.FAILED ->
@@ -72,7 +70,7 @@ class RNIapAmazonListener(
                         RNIapAmazonModule.PROMISE_GET_PRODUCT_DATA,
                         E_PRODUCT_DATA_RESPONSE_FAILED,
                         null,
-                        null
+                        null,
                     )
             ProductDataResponse.RequestStatus.NOT_SUPPORTED ->
                 PromiseUtils
@@ -80,7 +78,7 @@ class RNIapAmazonListener(
                         RNIapAmazonModule.PROMISE_GET_PRODUCT_DATA,
                         E_PRODUCT_DATA_RESPONSE_NOT_SUPPORTED,
                         null,
-                        null
+                        null,
                     )
         }
     }
@@ -96,28 +94,28 @@ class RNIapAmazonListener(
                     val item = receiptToMap(userData, receipt)
                     promiseItem = WritableNativeMap()
                     promiseItem.merge(item)
-                    sendEvent(reactContext, "purchase-updated", item)
+                    eventSender?.sendEvent("purchase-updated", item)
                     availableItems.pushMap(promiseItem)
                 }
                 if (response.hasMore()) {
-                    purchasingService.getPurchaseUpdates(false)
+                    purchasingService?.getPurchaseUpdates(false)
                 } else {
                     if (purchases.size > 0 && promiseItem != null) {
                         PromiseUtils
                             .resolvePromisesForKey(
                                 RNIapAmazonModule.PROMISE_BUY_ITEM,
-                                promiseItem
+                                promiseItem,
                             )
                     }
                     PromiseUtils
                         .resolvePromisesForKey(
                             RNIapAmazonModule.PROMISE_QUERY_PURCHASES,
-                            true
+                            true,
                         )
                     PromiseUtils
                         .resolvePromisesForKey(
                             RNIapAmazonModule.PROMISE_QUERY_AVAILABLE_ITEMS,
-                            availableItems
+                            availableItems,
                         )
                 }
             }
@@ -129,20 +127,20 @@ class RNIapAmazonListener(
                 error.putString("debugMessage", debugMessage)
                 error.putString("code", errorCode)
                 error.putString("message", debugMessage)
-                sendEvent(reactContext, "purchase-error", error)
+                eventSender?.sendEvent("purchase-error", error)
                 PromiseUtils
                     .rejectPromisesForKey(
                         RNIapAmazonModule.PROMISE_QUERY_PURCHASES,
                         errorCode,
                         debugMessage,
-                        null
+                        null,
                     )
                 PromiseUtils
                     .rejectPromisesForKey(
                         RNIapAmazonModule.PROMISE_QUERY_AVAILABLE_ITEMS,
                         errorCode,
                         debugMessage,
-                        null
+                        null,
                     )
             }
             PurchaseUpdatesResponse.RequestStatus.NOT_SUPPORTED -> {
@@ -153,20 +151,20 @@ class RNIapAmazonListener(
                 error.putString("debugMessage", debugMessage)
                 error.putString("code", errorCode)
                 error.putString("message", debugMessage)
-                sendEvent(reactContext, "purchase-error", error)
+                eventSender?.sendEvent("purchase-error", error)
                 PromiseUtils
                     .rejectPromisesForKey(
                         RNIapAmazonModule.PROMISE_QUERY_PURCHASES,
                         errorCode,
                         debugMessage,
-                        null
+                        null,
                     )
                 PromiseUtils
                     .rejectPromisesForKey(
                         RNIapAmazonModule.PROMISE_QUERY_AVAILABLE_ITEMS,
                         errorCode,
                         debugMessage,
-                        null
+                        null,
                     )
             }
         }
@@ -198,11 +196,11 @@ class RNIapAmazonListener(
                 val item = receiptToMap(userData, receipt)
                 val promiseItem: WritableMap = Arguments.createMap()
                 promiseItem.merge(item)
-                sendEvent(reactContext, "purchase-updated", item)
+                eventSender?.sendEvent("purchase-updated", item)
                 PromiseUtils
                     .resolvePromisesForKey(
                         RNIapAmazonModule.PROMISE_BUY_ITEM,
-                        promiseItem
+                        promiseItem,
                     )
             }
             PurchaseResponse.RequestStatus.ALREADY_PURCHASED -> {
@@ -213,13 +211,13 @@ class RNIapAmazonListener(
                 error.putString("debugMessage", debugMessage)
                 error.putString("code", errorCode)
                 error.putString("message", debugMessage)
-                sendEvent(reactContext, "purchase-error", error)
+                eventSender?.sendEvent("purchase-error", error)
                 PromiseUtils
                     .rejectPromisesForKey(
                         RNIapAmazonModule.PROMISE_BUY_ITEM,
                         errorCode,
                         debugMessage,
-                        null
+                        null,
                     )
             }
             PurchaseResponse.RequestStatus.FAILED -> {
@@ -231,13 +229,13 @@ class RNIapAmazonListener(
                 error.putString("debugMessage", debugMessage)
                 error.putString("code", errorCode)
                 error.putString("message", debugMessage)
-                sendEvent(reactContext, "purchase-error", error)
+                eventSender?.sendEvent("purchase-error", error)
                 PromiseUtils
                     .rejectPromisesForKey(
                         RNIapAmazonModule.PROMISE_BUY_ITEM,
                         errorCode,
                         debugMessage,
-                        null
+                        null,
                     )
             }
             PurchaseResponse.RequestStatus.INVALID_SKU -> {
@@ -248,13 +246,13 @@ class RNIapAmazonListener(
                 error.putString("debugMessage", debugMessage)
                 error.putString("code", errorCode)
                 error.putString("message", debugMessage)
-                sendEvent(reactContext, "purchase-error", error)
+                eventSender?.sendEvent("purchase-error", error)
                 PromiseUtils
                     .rejectPromisesForKey(
                         RNIapAmazonModule.PROMISE_BUY_ITEM,
                         errorCode,
                         debugMessage,
-                        null
+                        null,
                     )
             }
             PurchaseResponse.RequestStatus.NOT_SUPPORTED -> {
@@ -265,13 +263,13 @@ class RNIapAmazonListener(
                 error.putString("debugMessage", debugMessage)
                 error.putString("code", errorCode)
                 error.putString("message", debugMessage)
-                sendEvent(reactContext, "purchase-error", error)
+                eventSender?.sendEvent("purchase-error", error)
                 PromiseUtils
                     .rejectPromisesForKey(
                         RNIapAmazonModule.PROMISE_BUY_ITEM,
                         errorCode,
                         debugMessage,
-                        null
+                        null,
                     )
             }
         }
@@ -294,7 +292,7 @@ class RNIapAmazonListener(
                         RNIapAmazonModule.PROMISE_GET_USER_DATA,
                         E_USER_DATA_RESPONSE_NOT_SUPPORTED,
                         null,
-                        null
+                        null,
                     )
             UserDataResponse.RequestStatus.FAILED ->
                 PromiseUtils
@@ -302,19 +300,9 @@ class RNIapAmazonListener(
                         RNIapAmazonModule.PROMISE_GET_USER_DATA,
                         E_USER_DATA_RESPONSE_FAILED,
                         null,
-                        null
+                        null,
                     )
         }
-    }
-
-    fun sendEvent(
-        reactContext: ReactContext,
-        eventName: String,
-        params: WritableMap?
-    ) {
-        reactContext
-            .getJSModule(RCTDeviceEventEmitter::class.java)
-            .emit(eventName, params)
     }
 
     companion object {

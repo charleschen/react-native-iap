@@ -14,18 +14,6 @@
 
 Read the [documentation](https://react-native-iap.dooboolab.com). See the [troubleshooting](https://react-native-iap.dooboolab.com/docs/guides/troubleshooting#common-issues) for the common issues to avoid.
 
-## Our maintainers
-
-Please [fund the project](https://opencollective.com/react-native-iap) if you are willing the maintainers to make the repository sustainable.
-
-- [andresesfm](https://github.com/andresesfm)
-
-> The fund goes to maintainers.
-
-### Supporter
-
-- [hyochan](https://github.com/hyochan)
-
 ## Announcement
 
 - Version `12.0.0`: Implements Amazon 3.x SDK including the new DRM verification.
@@ -36,7 +24,7 @@ Please [fund the project](https://opencollective.com/react-native-iap) if you ar
   yarn add react-native-iap@next
   ```
 
-- Version `10.0.0` is a maitenance build. Many internal refactorings and clean up of the code. Special thanks to [jeremybarbet](https://github.com/jeremybarbet) for his contributions. Most notably all methods now take an object parameter instead of separate parameters. Please help us test
+- Version `10.0.0` is a maintenance build. Many internal refactorings and clean up of the code. Special thanks to [jeremybarbet](https://github.com/jeremybarbet) for his contributions. Most notably all methods now take an object parameter instead of separate parameters. Please help us test
 
 - Version `9.0.0` The module migrates android sdk to [play billing library v5](https://qonversion.io/blog/google-play-billing-library-5-0). Our core maintainers [andresesfm](https://github.com/andresesfm) and [jeremybarbet](https://github.com/jeremybarbet) worked hard on this.
 
@@ -44,11 +32,11 @@ Please [fund the project](https://opencollective.com/react-native-iap) if you ar
 
 - Version `8.0.0` is currently in release candidate. The module is completely rewritten with `Kotlin` and `Swift` for maintenenance issue by [andresesfm](https://github.com/andresesfm) 🔆. You may install this for early preview.
 
-- React Native IAP hook is out. You can see [medium post](https://medium.com/dooboolab/announcing-react-native-iap-hooks-96c7ffd3f19a) on how to use it.
+- React Native IAP hook is out. You can see [medium post](https://medium.com/dooboolab-community/announcing-react-native-iap-hooks-96c7ffd3f19a) on how to use it.
 
-- The `react-native-iap` module hasn't been maintained well recently. We are thinking of participating again and make the module healthier. Please refer to [2021 Maintenance plan](https://github.com/dooboolab/react-native-iap/issues/1241) and share with us how you or your organization is using it. Happy new year 🎉
+- The `react-native-iap` module hasn't been maintained well recently. We are thinking of participating again and make the module healthier. Please refer to [2021 Maintenance plan](https://github.com/dooboolab-community/react-native-iap/issues/1241) and share with us how you or your organization is using it. Happy new year 🎉
 
-  - The sample code is out in [Sponsor page](https://github.com/hyochan/dooboolab.com/blob/main/src/components/pages/Sponsor.tsx) in [dooboolab.com](https://github.com/hyochan/dooboolab.com) repository which sadly is rejected by Apple because of lacking product features. I will work on another example project to support this module. More information in [#1241 commment](https://github.com/dooboolab/react-native-iap/issues/1241#issuecomment-798540785).
+  - The sample code is out in [Sponsor page](https://github.com/hyochan/dooboolab.com/blob/main/src/components/pages/Sponsor.tsx) in [dooboolab.com](https://github.com/hyochan/dooboolab.com) repository which sadly is rejected by Apple because of lacking product features. I will work on another example project to support this module. More information in [#1241 commment](https://github.com/dooboolab-community/react-native-iap/issues/1241#issuecomment-798540785).
 
 ## Configuration of Play Store & App Store Connect
 
@@ -57,15 +45,6 @@ Please [fund the project](https://opencollective.com/react-native-iap) if you ar
 ## Example
 
 Follow [this guide](./IapExample/README.md) to get the example running.
-
-## Our maintainers
-
-Please [fund the project](https://opencollective.com/react-native-iap) if you are willing the maintainers to make the repository sustainable.
-
-- [andresesfm](https://github.com/andresesfm)
-- [jeremybarbet](https://github.com/jeremybarbet)
-
-> The fund goes to maintainers.
 
 ## Acknowledgements
 
@@ -76,10 +55,6 @@ If you're looking for a module going further than `react-native-iap`, we recomme
 Since `IAP` itself is not perfect on each platform, we desperately need
 this project to be maintained. If you'd like to help us, please consider being
 with us in [Open Collective](https://opencollective.com/react-native-iap).
-
-### Supporter
-
-- [hyochan](https://github.com/hyochan)
 
 ### Sponsors
 
@@ -94,7 +69,7 @@ Please be our [Backers](https://opencollective.com/react-native-iap#backer).
 
 ### Contributing
 
-Please make sure to read the [Contributing Guide](https://github.com/dooboolab/react-native-iap/blob/main/CONTRIBUTING.md) before making a pull request.
+Please make sure to read the [Contributing Guide](https://github.com/dooboolab-community/react-native-iap/blob/main/CONTRIBUTING.md) before making a pull request.
 Thank you to all the people who helped to maintain and upgrade this project!
 
 <a href="graphs/contributors"><img src="https://opencollective.com/react-native-iap/contributors.svg?width=890" /></a>

@@ -2,25 +2,13 @@
 
 ### How can a user cancel a subscription in my app?
 
-- For both iOS and Android your users cannot cancel subscriptions inside your app. You need to direct your users to iTunes/the App Store or Google Play.
+- For all: iOS, Amazon and Android, your users cannot cancel subscriptions inside your app. You need to direct your users to the App Store or Google Play.
 
-- You can do this on iOS 12 or later (for earlier iOS versions, use [this URL](https://buy.itunes.apple.com/WebObjects/MZFinance.woa/wa/manageSubscriptions)):
+We provide a convinience method to handle the opening of the native UI, call:
 
-  ```ts
-  Linking.openURL('https://apps.apple.com/account/subscriptions');
-  ```
-
-- You can do this on Android:
-
-  ```ts
-  Linking.openURL(
-    'https://play.google.com/store/account/subscriptions?package=YOUR_PACKAGE_NAME&sku=YOUR_PRODUCT_ID',
-  );
-  ```
-
-  (change `YOUR_PACKAGE_NAME` and `YOUR_PRODUCT_ID`)
-
-- More on `Linking` in React Native: https://facebook.github.io/react-native/docs/linking
+```ts
+deepLinkToSubscriptions();
+```
 
 ### Can I buy product right away skipping fetching products if I already know productId?
 
@@ -38,12 +26,12 @@
   list of items to “purchase” before requesting purchase.
 
   - Related [blog](https://medium.com/p/e4b55491479b).
-  - Related issue [#283](https://github.com/dooboolab/react-native-iap/issues/283).
+  - Related issue [#283](https://github.com/dooboolab-community/react-native-iap/issues/283).
 
 ### How do I validate receipt in iOS?
 
 - Official doc is [here](https://developer.apple.com/library/content/releasenotes/General/ValidateAppStoreReceipt/Chapters/ValidateRemotely.html).
-- Resolved issues in [#203](https://github.com/dooboolab/react-native-iap/issues/203), [#237](https://github.com/dooboolab/react-native-iap/issues/237).
+- Resolved issues in [#203](https://github.com/dooboolab-community/react-native-iap/issues/203), [#237](https://github.com/dooboolab-community/react-native-iap/issues/237).
 
 ### How do I validate receipt in Android?
 
@@ -64,12 +52,48 @@
 ### How to make consumable product in Android developer mode?
 
 - If you are facing `"You already own this item"` on developer(test) mode,
-  you might check related issue [#126](https://github.com/dooboolab/react-native-iap/issues/126)
+  you might check related issue [#126](https://github.com/dooboolab-community/react-native-iap/issues/126)
 
 ### How do I use `react-native-iap` in Expo?
 
-- You should detach from `expo` and get `expokit` out of it.
-- Releated issue in [#174](https://github.com/dooboolab/react-native-iap/issues/174).
+> This package cannot be used in the "Expo Go" app because [it requires custom native code](https://docs.expo.io/workflow/customizing/).
+
+After installing this npm package, add the [config plugin](https://docs.expo.io/guides/config-plugins/) to the [`plugins`](https://docs.expo.io/versions/latest/config/app/#plugins) array of your `app.json` or `app.config.js`:
+
+```json
+{
+  "expo": {
+    "plugins": ["react-native-iap"]
+  }
+}
+```
+
+Next, rebuild your app as described in the ["Adding custom native code"](https://docs.expo.io/workflow/customizing/) guide.
+
+## API
+
+The plugin provides props for extra customization. Every time you change the props or plugins, you'll need to rebuild (and `prebuild`) the native app. If no extra properties are added, **Play Store** configuration will be added.
+
+Optional prop:
+
+- `paymentProvider` (_string_): payment provider to configure: `Play Store`, `Amazon AppStore`, `both`
+
+#### Example
+
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "react-native-iap",
+        {
+          "paymentProvider": "both"
+        }
+      ]
+    ]
+  }
+}
+```
 
 ### How do I handle promoted products in iOS?
 
@@ -117,10 +141,10 @@ Then call `initConnection` (see above)
 Here are some resources you might get help out of.
 
 - For `iOS`, check if you’ve agreed on taxes
-  https://github.com/dooboolab/react-native-iap/issues/1272#issuecomment-800131501. Also, you may try to add storekit.
+  https://github.com/dooboolab-community/react-native-iap/issues/1272#issuecomment-800131501. Also, you may try to add storekit.
 
 - For Android, hope you to check this one.
-  https://github.com/dooboolab/react-native-iap/issues/124#issuecomment-386593185
+  https://github.com/dooboolab-community/react-native-iap/issues/124#issuecomment-386593185
 
 ### Update listener called many times on iOS (Storekit 1)
 

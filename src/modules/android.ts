@@ -1,6 +1,10 @@
 import {Linking, NativeModules} from 'react-native';
 
-import {checkNativeAndroidAvailable, getAndroidModule} from '../internal';
+import {
+  checkNativeAndroidAvailable,
+  getAndroidModule,
+  isAndroid,
+} from '../internal';
 import {
   InstallSourceAndroid,
   Product,
@@ -63,8 +67,10 @@ export interface AndroidModuleProps extends NativeModuleProps {
   buyItemByType: BuyItemByType;
   acknowledgePurchase: AcknowledgePurchase;
   consumeProduct: ConsumeProduct;
+  /** @deprecated to be renamed to sendUnconsumedPurchases if not removed completely */
   startListening: StartListening;
   getPackageName: GetPackageName;
+  isFeatureSupported: (feature: Android.FeatureType) => Promise<boolean>;
 }
 
 export const AndroidModule = NativeModules.RNIapModule as AndroidModuleProps;
@@ -76,7 +82,7 @@ export const getInstallSourceAndroid = (): InstallSourceAndroid => {
 };
 
 /**
- * Deep link to subscriptions screen on Android. No-op on iOS.
+ * Deep link to subscriptions screen on Android.
  * @param {string} sku The product's SKU (on Android)
  * @returns {Promise<void>}
  */
@@ -152,4 +158,18 @@ export const acknowledgePurchaseAndroid = ({
   developerPayload?: string;
 }): Promise<PurchaseResult | boolean | void> => {
   return getAndroidModule().acknowledgePurchase(token, developerPayload);
+};
+
+/**
+ * Acknowledge a product (on Android.) No-op on iOS.
+ * @param {Android.FeatureType} feature to be checked
+ * @returns {Promise<boolean>}
+ */
+export const isFeatureSupported = (
+  feature: Android.FeatureType,
+): Promise<boolean> => {
+  if (!(isAndroid && RNIapModule)) {
+    return Promise.reject('This is only available on Android clients');
+  }
+  return AndroidModule.isFeatureSupported(feature);
 };

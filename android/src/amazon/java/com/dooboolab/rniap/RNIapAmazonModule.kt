@@ -1,11 +1,11 @@
-package com.dooboolab.RNIap
+package com.dooboolab.rniap
 
-import android.os.Handler
-import android.os.Looper
+import android.content.Intent
+import android.net.Uri
 import android.util.Log
+import androidx.core.content.ContextCompat.startActivity
 import com.amazon.device.drm.LicensingService
 import com.amazon.device.drm.model.LicenseResponse
-import com.amazon.device.iap.PurchasingListener
 import com.amazon.device.iap.model.FulfillmentResult
 import com.facebook.react.bridge.LifecycleEventListener
 import com.facebook.react.bridge.Promise
@@ -13,37 +13,41 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableArray
+import com.facebook.react.bridge.WritableMap
 import com.facebook.react.module.annotations.ReactModule
+import com.facebook.react.modules.core.DeviceEventManagerModule
 
 @ReactModule(name = RNIapAmazonModule.TAG)
 class RNIapAmazonModule(
-    reactContext: ReactApplicationContext,
+    private val reactContext: ReactApplicationContext,
     private val purchasingService: PurchasingServiceProxy = PurchasingServiceProxyAmazonImpl(),
-    private val handler: Handler = Handler(Looper.getMainLooper()),
-    private val amazonListener: PurchasingListener = RNIapAmazonListener(reactContext, purchasingService)
+    private var eventSender: EventSender? = null,
 ) :
     ReactContextBaseJavaModule(reactContext) {
-    var hasListener = false
     override fun getName(): String {
         return TAG
     }
 
     @ReactMethod
     fun initConnection(promise: Promise) {
-        val context = reactApplicationContext
+        if (RNIapActivityListener.amazonListener == null) {
+            promise.safeReject(PromiseUtils.E_DEVELOPER_ERROR, Exception("RNIapActivityListener is not registered in your MainActivity.onCreate"))
+            return
+        }
+        if (eventSender == null) {
+            eventSender = object : EventSender {
+                private val rctDeviceEventEmitter = reactContext
+                    .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
 
-        handler.postDelayed({
-            try {
-                purchasingService.registerListener(context.applicationContext, amazonListener)
-                hasListener = true
-                // Prefetch user and purchases as per Amazon SDK documentation:
-                purchasingService.getUserData()
-                purchasingService.getPurchaseUpdates(false)
-                promise.safeResolve(true)
-            } catch (e: Exception) {
-                promise.safeReject("Error initializing Amazon appstore sdk", e)
+                override fun sendEvent(eventName: String, params: WritableMap?) {
+                    rctDeviceEventEmitter
+                        .emit(eventName, params)
+                }
             }
-        }, 0L)
+        }
+        RNIapActivityListener.amazonListener?.eventSender = eventSender
+        RNIapActivityListener.amazonListener?.purchasingService = purchasingService
+        promise.resolve(true)
     }
 
     @ReactMethod
@@ -88,7 +92,7 @@ class RNIapAmazonModule(
     @ReactMethod
     fun endConnection(promise: Promise) {
         PromiseUtils.rejectAllPendingPromises()
-        hasListener = false
+        RNIapActivityListener.hasListener = false
         promise.resolve(true)
     }
 
@@ -129,7 +133,7 @@ class RNIapAmazonModule(
     @ReactMethod
     fun buyItemByType(
         sku: String?,
-        promise: Promise
+        promise: Promise,
     ) {
         PromiseUtils.addPromiseForKey(PROMISE_BUY_ITEM, promise)
         val requestId = purchasingService.purchase(sku)
@@ -139,7 +143,7 @@ class RNIapAmazonModule(
     fun acknowledgePurchase(
         token: String?,
         developerPayLoad: String?,
-        promise: Promise
+        promise: Promise,
     ) {
         purchasingService.notifyFulfillment(token, FulfillmentResult.FULFILLED)
         promise.resolve(true)
@@ -149,7 +153,7 @@ class RNIapAmazonModule(
     fun consumeProduct(
         token: String?,
         developerPayLoad: String?,
-        promise: Promise
+        promise: Promise,
     ) {
         purchasingService.notifyFulfillment(token, FulfillmentResult.FULFILLED)
         promise.resolve(true)
@@ -158,6 +162,28 @@ class RNIapAmazonModule(
     private fun sendUnconsumedPurchases(promise: Promise) {
         PromiseUtils.addPromiseForKey(PROMISE_QUERY_PURCHASES, promise)
         purchasingService.getPurchaseUpdates(false)
+    }
+
+    /**
+     * Redirects user to a screen where they can manage their subscriptions.
+     * on Amazon devices it will use the system dialog whereas on Android devices that install the Amazon app store, it'll use the browser.
+     * This based on provided parameter `isAmazonDevice`
+     * From https://amazon.developer.forums.answerhub.com/questions/175720/how-to-open-store-subscription-screen-directly-use.html?childToView=179402#answer-179402
+     */
+    @ReactMethod
+    fun deepLinkToSubscriptions(isAmazonDevice: Boolean, promise: Promise) {
+        if (isAmazonDevice) {
+            val intent =
+                Intent("android.intent.action.VIEW", Uri.parse("amzn://apps/library/subscriptions"))
+            startActivity(reactContext, intent, null)
+        } else {
+            val uri =
+                Uri.parse("https://www.amazon.com/gp/mas/your-account/myapps/yoursubscriptions/ref=mas_ya_subs")
+            val launchIntent = Intent(Intent.ACTION_VIEW, uri)
+            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(reactContext, launchIntent, null)
+        }
+        promise.resolve(true)
     }
 
     @ReactMethod
@@ -191,7 +217,7 @@ class RNIapAmazonModule(
              * We should fetch updates on resume
              */
             override fun onHostResume() {
-                if (hasListener) {
+                if (RNIapActivityListener.hasListener) {
                     purchasingService.getUserData()
                     purchasingService.getPurchaseUpdates(false)
                 }

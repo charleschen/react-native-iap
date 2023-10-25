@@ -68,6 +68,8 @@ export interface ProductPurchase {
   quantityIOS?: number;
   originalTransactionDateIOS?: number;
   originalTransactionIdentifierIOS?: string;
+  verificationResultIOS?: string;
+  appAccountToken?: string;
   //Android
   productIds?: string[];
   dataAndroid?: string;
@@ -98,6 +100,7 @@ export interface SubscriptionPurchase extends ProductPurchase {
   autoRenewingAndroid?: boolean;
   originalTransactionDateIOS?: number;
   originalTransactionIdentifierIOS?: string;
+  verificationResultIOS?: string;
 }
 
 export type Purchase = ProductPurchase | SubscriptionPurchase;
@@ -147,6 +150,8 @@ export interface SubscriptionAndroid {
 }
 
 export interface SubscriptionOfferAndroid {
+  basePlanId: string;
+  offerId: string | null;
   offerToken: string;
   pricingPhases: {
     pricingPhaseList: PricingPhaseAndroid[];

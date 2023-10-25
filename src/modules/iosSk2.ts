@@ -97,3 +97,9 @@ export const latestTransaction = (sku: string): Promise<TransactionSk2> =>
  */
 export const beginRefundRequest = (sku: string): Promise<RefundRequestStatus> =>
   RNIapIosSk2.beginRefundRequest(sku);
+
+/**
+ *
+ */
+export const showManageSubscriptions = (): Promise<null> =>
+  RNIapIosSk2.showManageSubscriptions();

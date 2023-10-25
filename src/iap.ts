@@ -4,6 +4,7 @@ import * as IapAmazon from './modules/amazon';
 import * as IapAndroid from './modules/android';
 import * as IapIos from './modules/ios';
 import * as IapIosSk2 from './modules/iosSk2';
+import {singleProductAndroidMap} from './types/android';
 import {offerToRecord} from './types/apple';
 import {
   offerSk2Map,
@@ -196,16 +197,12 @@ export const getProducts = ({
         } else {
           items = (await RNIapIos.getItems(skus)) as Product[];
         }
-        return items.filter(
-          (item: Product) =>
-            skus.includes(item.productId) && item.type === 'iap',
-        );
+        return items.filter((item: Product) => skus.includes(item.productId));
       },
       android: async () => {
-        const products = await getAndroidModule().getItemsByType(
-          ANDROID_ITEM_TYPE_IAP,
-          skus,
-        );
+        const products = (
+          await getAndroidModule().getItemsByType(ANDROID_ITEM_TYPE_IAP, skus)
+        ).map(singleProductAndroidMap);
 
         return fillProductsWithAdditionalData(products);
       },
@@ -254,9 +251,8 @@ export const getSubscriptions = ({
           items = (await RNIapIos.getItems(skus)) as SubscriptionIOS[];
         }
 
-        items = items.filter(
-          (item: SubscriptionIOS) =>
-            skus.includes(item.productId) && item.type === 'subs',
+        items = items.filter((item: SubscriptionIOS) =>
+          skus.includes(item.productId),
         );
 
         return addSubscriptionPlatform(items, SubscriptionPlatform.ios);
@@ -439,10 +435,10 @@ const App = () => {
             break;
 
           case 'com.example.coins100':
-            await finishTransaction(purchase.purchaseToken);
+            await finishTransaction({purchase});
             CoinStore.addCoins(100);
         }
-      })
+      }));
 
       Alert.alert(
         'Restore Successful',
@@ -580,7 +576,7 @@ const App = () => {
 
 export const requestPurchase = (
   request: RequestPurchase,
-): Promise<ProductPurchase | void> =>
+): Promise<ProductPurchase | ProductPurchase[] | void> =>
   (
     Platform.select({
       ios: async () => {
@@ -739,7 +735,7 @@ const App = () => {
  */
 export const requestSubscription = (
   request: RequestSubscription,
-): Promise<SubscriptionPurchase | null | void> =>
+): Promise<SubscriptionPurchase | SubscriptionPurchase[] | null | void> =>
   (
     Platform.select({
       ios: async () => {
@@ -845,7 +841,7 @@ const App = () => {
   const handlePurchase = async () => {
     // ... handle the purchase request
 
-    const result = finishTransaction(purchase);
+    const result = finishTransaction({purchase});
   };
 
   return <Button title="Buy product" onPress={handlePurchase} />;
@@ -900,6 +896,39 @@ export const finishTransaction = ({
         return Promise.reject(
           new Error('purchase is not suitable to be purchased'),
         );
+      },
+    }) || (() => Promise.reject(new Error('Unsupported Platform')))
+  )();
+};
+
+/**
+ * Deeplinks to native interface that allows users to manage their subscriptions
+ *
+ */
+export const deepLinkToSubscriptions = ({
+  sku,
+  isAmazonDevice = true,
+}: {
+  sku?: string;
+  isAmazonDevice?: boolean;
+}): Promise<void> => {
+  return (
+    Platform.select({
+      ios: async () => {
+        IapIos.deepLinkToSubscriptionsIos();
+      },
+      android: async () => {
+        if (isAmazon) {
+          IapAmazon.deepLinkToSubscriptionsAmazon({isAmazonDevice});
+        } else if (sku) {
+          IapAndroid.deepLinkToSubscriptionsAndroid({sku});
+        } else {
+          Promise.reject(
+            new Error(
+              'Sku is required to locate subscription in Android Store',
+            ),
+          );
+        }
       },
     }) || (() => Promise.reject(new Error('Unsupported Platform')))
   )();
