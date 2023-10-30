@@ -20,8 +20,8 @@ class RNIapIos: RCTEventEmitter, SKRequestDelegate, SKPaymentTransactionObserver
         promisesByKey = [String: [RNIapIosPromise]]()
         pendingTransactionWithAutoFinish = false
         
-        promisesQueue = DispatchQueue(label: "com.github.dooboolab-community.react-native-iap.promises-queue", attributes: [.serial])
-        productsQueue = DispatchQueue(label: "com.github.dooboolab-community.react-native-iap.products-queue", attributes: [.serial])
+        promisesQueue = DispatchQueue(label: "com.github.dooboolab-community.react-native-iap.promises-queue")
+        productsQueue = DispatchQueue(label: "com.github.dooboolab-community.react-native-iap.products-queue")
 
         validProducts = [String: SKProduct]()
         super.init()
